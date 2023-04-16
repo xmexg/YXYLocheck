@@ -22,6 +22,9 @@ public class StringUtil {
         return "2021" + a3();
     }
     
+    /**
+     * 这是计算ut代码
+     */
     public static String getLoginString(String str, String str2) {
         try {
             String valueOf = String.valueOf(System.currentTimeMillis());
@@ -50,6 +53,10 @@ public class StringUtil {
         }
     }
     
+    
+    /**
+     * 下面是加密y代码
+     */
     public static boolean isEmpty(String str) {
         return str == null || str.trim().length() == 0 || str.equalsIgnoreCase("null");
     }
@@ -81,4 +88,34 @@ public class StringUtil {
         return sb.toString();
     }
     
+    
+    /**
+     * 下面是解密y代码
+     */
+    public static String getRStr(String str) {
+        try {
+            byte[] decode = Base64.decode(getRString(str), 0);
+            return new String(decrypt(decode, a1() + a2()), "utf-8");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
+    private static String getRString(String str) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < str.length(); i++) {
+            if (i >= 10 || (i + 1) % 2 == 0) {
+                sb.append(str.charAt(i));
+            }
+        }
+        return sb.toString();
+    }
+    
+    public static byte[] decrypt(byte[] bArr, String str) throws Exception {
+        SecretKeySpec secretKeySpec = new SecretKeySpec(str.getBytes(), "AES");
+        Cipher cipher = Cipher.getInstance(CIPHER);
+        cipher.init(2, secretKeySpec);
+        return cipher.doFinal(bArr);
+    }
 }

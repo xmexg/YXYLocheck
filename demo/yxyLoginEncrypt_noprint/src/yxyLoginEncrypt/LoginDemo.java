@@ -2,7 +2,6 @@ package yxyLoginEncrypt;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
@@ -11,9 +10,15 @@ import java.util.zip.GZIPInputStream;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
-public class Main {
+/**
+ * 这是没有输出的版本
+ * 只是在演示版中删除了所有输出命令
+ * 我把此种版本用于apk的依赖包
+ * 
+ * @version 0.1.0
+ */
+public class LoginDemo {
 	static String device="android",
 			registrationId="13065ffa4f1842c0297",
 			appVersion="20230315",
@@ -26,9 +31,7 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 
 		// 开始
-		System.out.println("优学院登录加解密演示程序");
 		Scanner scanner = new Scanner(System.in);
-		System.out.print("请选择演示(1:加密,2:解密,3:完整登录演示):");
 		String input = scanner.next();
 		switch (input) {
 			case "1":
@@ -41,30 +44,24 @@ public class Main {
 				yxyLoginDemo();
 				return;
 			default:
-				System.out.println("输入错误");
 				return;
 		}
 	}
 
 	// 加密演示
 	public static String yxyEncryptDemo() throws Exception {
-		System.out.println("=======================");
 		String str, str2;// 用户登录时输入的帐号和密码
 		Scanner scanner = new Scanner(System.in);
-		System.out.print("请输入手机号:");
 		str = scanner.nextLine();
-		System.out.print("请输入密码:");
 		str2 = scanner.nextLine();
-		str2 = EncryptUtils.md5Encrypt(str2);
 		scanner.close();
-		System.out.println("=======================");
 		return yxyEncryptDemo(str, str2);
 	}
-	public static String yxyEncryptDemo(String str, String str2){
+	public static String yxyEncryptDemo(String str, String str2) throws Exception{
+		str2 = EncryptUtils.md5Encrypt(str2);
 
 		// jadx - package cn.ulearning.yxy.api;
 		String ut = StringUtil.getLoginString(str, str2);
-		System.out.println(" > ut:\t" + ut);
 
 		// jadx - package cn.ulearning.yxy.api;
 		HashMap hashMap = new HashMap();
@@ -78,17 +75,13 @@ public class Main {
 		HashMap hashMap2 = new HashMap();
 		String y = StringUtil.getCStr(new Gson().toJson(hashMap));
 		hashMap2.put("y", y);
-		System.out.println("\n y加密");
-		System.out.println(" - 第一轮y:\t"+y);
 		String postbody = new Gson().toJson(hashMap2);
-		System.out.println(" > 请求体:\t"+postbody);
 		return postbody;
 	}
 
 	// 解密演示
 	public static void yxyUnencryptDemo() {
 		Scanner input = new Scanner(System.in);
-		System.out.print("请输入登录请求包里的result密文:");
 		String requesty = input.nextLine();
 		input.close();
 		yxyUnencryptDemo(requesty);
@@ -96,19 +89,36 @@ public class Main {
 	public static String yxyUnencryptDemo(String requesty){
 		String requesty_after = requesty.replace("\\n", "");
 		String yHashmap = StringUtil.getRStr(requesty_after);
-		System.out.println("\n解密响应包:\n"+yHashmap);
 		return yHashmap;
 	}
 	
-		// 完整登录演示
-	public static String yxyLoginDemo() throws Exception {
-		String postBody = yxyEncryptDemo();
+	// 完整登录演示
+	private static String yxyLoginDemo() throws Exception {
+		return yxyLoginDemo(null,null);
+	}
+	public static String yxyLoginDemo(String phone, String pwd) throws Exception {
+		String postBody;
+		if(phone==null||pwd==null)
+			postBody = yxyEncryptDemo();
+		else
+			postBody = yxyEncryptDemo(phone, pwd);
 		String getRes = posty(postBody);
-		System.out.println("\n原始响应包:\n"+getRes);
+		if(getRes == null) {
+			JsonObject jo = new JsonObject();
+			jo.addProperty("code", 0);
+			jo.addProperty("result", "优学院未返回任何数据");
+			return new Gson().toJson(jo);
+		}
 		Gson gson = new Gson();
 		JsonObject ResObject = gson.fromJson(getRes, JsonObject.class);
-		String result = ResObject.get("result").getAsString();
-		return yxyUnencryptDemo(result);
+		int code = ResObject.get("code").getAsInt();
+		if(code == 200) {
+			String getresult = ResObject.get("result").getAsString();
+			String newresult = yxyUnencryptDemo(getresult);
+			ResObject.addProperty("result", newresult);
+			getRes = new Gson().toJson(ResObject);
+		}
+		return getRes;
 	}
 	public static String posty(String postBody) throws Exception {
 		URL url = new URL("https://apps.ulearning.cn/login/v2");

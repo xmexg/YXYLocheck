@@ -2,6 +2,7 @@ package yxyLoginEncrypt;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
@@ -9,17 +10,17 @@ import java.util.Scanner;
 import java.util.zip.GZIPInputStream;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 /**
- * 这是没有输出的版本
- * 只是在演示版中删除了所有输出命令
- * 我把此种版本用于apk的依赖包
+ * 优学院登录演示
  * 
- * @version 0.1.0
+ * @version 0.1.2
+ *
  */
 public class LoginDemo {
-	static String device="android",
+	public static String device="android",
 			registrationId="13065ffa4f1842c0297",
 			appVersion="20230315",
 			webEnv="1",
@@ -28,7 +29,7 @@ public class LoginDemo {
 			Uversion="2",
 			Platform="android";
 
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) {
 
 		// 开始
 		Scanner scanner = new Scanner(System.in);
@@ -49,7 +50,7 @@ public class LoginDemo {
 	}
 
 	// 加密演示
-	public static String yxyEncryptDemo() throws Exception {
+	private static String yxyEncryptDemo() {
 		String str, str2;// 用户登录时输入的帐号和密码
 		Scanner scanner = new Scanner(System.in);
 		str = scanner.nextLine();
@@ -57,8 +58,12 @@ public class LoginDemo {
 		scanner.close();
 		return yxyEncryptDemo(str, str2);
 	}
-	public static String yxyEncryptDemo(String str, String str2) throws Exception{
-		str2 = EncryptUtils.md5Encrypt(str2);
+	public static String yxyEncryptDemo(String str, String str2){
+		try {
+			str2 = EncryptUtils.md5Encrypt(str2);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		// jadx - package cn.ulearning.yxy.api;
 		String ut = StringUtil.getLoginString(str, str2);
@@ -80,7 +85,7 @@ public class LoginDemo {
 	}
 
 	// 解密演示
-	public static void yxyUnencryptDemo() {
+	private static void yxyUnencryptDemo() {
 		Scanner input = new Scanner(System.in);
 		String requesty = input.nextLine();
 		input.close();
@@ -93,20 +98,30 @@ public class LoginDemo {
 	}
 	
 	// 完整登录演示
-	private static String yxyLoginDemo() throws Exception {
+	private static String yxyLoginDemo() {
 		return yxyLoginDemo(null,null);
 	}
-	public static String yxyLoginDemo(String phone, String pwd) throws Exception {
+	public static String yxyLoginDemo(String phone, String pwd) {
 		String postBody;
 		if(phone==null||pwd==null)
 			postBody = yxyEncryptDemo();
 		else
 			postBody = yxyEncryptDemo(phone, pwd);
-		String getRes = posty(postBody);
+		String getRes = null;
+		try {
+			getRes = posty(postBody);
+		} catch (SocketTimeoutException e) {
+			JsonObject jo = new JsonObject();
+			jo.addProperty("code", 0);
+			jo.addProperty("result", "登录超时");
+			return new Gson().toJson(jo);			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		if(getRes == null) {
 			JsonObject jo = new JsonObject();
 			jo.addProperty("code", 0);
-			jo.addProperty("result", "优学院未返回任何数据");
+			jo.addProperty("result", "无法获取响应包,可能密码错误");
 			return new Gson().toJson(jo);
 		}
 		Gson gson = new Gson();
@@ -114,13 +129,14 @@ public class LoginDemo {
 		int code = ResObject.get("code").getAsInt();
 		if(code == 200) {
 			String getresult = ResObject.get("result").getAsString();
-			String newresult = yxyUnencryptDemo(getresult);
-			ResObject.addProperty("result", newresult);
+			String newresult = yxyUnencryptDemo(getresult);// 把加密包解开
+			JsonElement jsonElement = gson.fromJson(newresult, JsonElement.class);// 把解开的加密包转换成JsonElement类型
+			ResObject.add("result", jsonElement);// 把解密后的json拼接到result里,切勿使用addProperty,他会转义
 			getRes = new Gson().toJson(ResObject);
 		}
 		return getRes;
 	}
-	public static String posty(String postBody) throws Exception {
+	private static String posty(String postBody) throws Exception {
 		URL url = new URL("https://apps.ulearning.cn/login/v2");
 		URLConnection con = url.openConnection();
 		con.setDoOutput(true);
